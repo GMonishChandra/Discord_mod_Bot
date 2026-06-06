@@ -1,0 +1,15 @@
+{
+  "name": "discord-bot-panel",
+  "version": "1.0.0",
+  "description": "Discord bot with web control panel",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.7.0"
+  }
+}

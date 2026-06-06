@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Control Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0e14;
+    --surface: #13141d;
+    --surface2: #1a1c28;
+    --border: #2a2d3e;
+    --accent: #5865f2;
+    --accent2: #eb459e;
+    --green: #23d18b;
+    --yellow: #ffd700;
+    --red: #ed4245;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --font: 'Syne', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* ── Layout ── */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 0;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px; background: var(--accent);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+  .nav { padding: 16px 10px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    transition: all 0.15s; margin-bottom: 2px;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .status-bar {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; font-family: var(--mono);
+  }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  #status-tag { color: var(--text); font-weight: 600; }
+
+  /* ── Main ── */
+  .main { padding: 32px; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title {
+    font-size: 24px; font-weight: 800; margin-bottom: 4px;
+    background: linear-gradient(135deg, var(--text), var(--muted));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; font-family: var(--mono); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Stat boxes ── */
+  .stat { background: var(--surface2); border-radius: 10px; padding: 16px; }
+  .stat-val { font-size: 28px; font-weight: 800; font-family: var(--mono); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Log box ── */
+  .log-box {
+    background: #08090d; border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; height: 340px;
+    overflow-y: auto; font-family: var(--mono); font-size: 11px;
+    line-height: 1.7; color: #a0aec0;
+  }
+  .log-box::-webkit-scrollbar { width: 5px; }
+  .log-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-line { padding: 1px 0; }
+  .log-line .ts { color: var(--accent); }
+  .log-line .msg { color: #c8d0e0; }
+
+  /* ── Inputs ── */
+  input, textarea, select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 10px 14px;
+    font-family: var(--font); font-size: 13px; width: 100%;
+    outline: none; transition: border 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .form-group { margin-bottom: 14px; }
+  .row { display: flex; gap: 10px; align-items: flex-end; }
+  .row .form-group { flex: 1; margin-bottom: 0; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--font); font-size: 13px; font-weight: 700;
+    transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #4752c4; }
+  .btn-success { background: var(--green); color: #000; }
+  .btn-success:hover { opacity: 0.85; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #c03537; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ── Toggle ── */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-info { }
+  .toggle-name { font-size: 14px; font-weight: 600; }
+  .toggle-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0; background: var(--border);
+    border-radius: 24px; cursor: pointer; transition: 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-track::before {
+    content: ''; position: absolute; width: 18px; height: 18px;
+    background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: 0.2s;
+  }
+  .toggle input:checked + .toggle-track::before { transform: translateX(20px); }
+
+  /* ── Tags / Badges ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; font-size: 12px;
+    font-family: var(--mono);
+  }
+  .tag .remove { cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; }
+  .tag .remove:hover { color: var(--red); }
+  .tags-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+  /* ── Server cards ── */
+  .server-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: border 0.15s;
+  }
+  .server-card:hover, .server-card.selected { border-color: var(--accent); }
+  .server-icon { width: 42px; height: 42px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; overflow: hidden; }
+  .server-icon img { width: 100%; height: 100%; object-fit: cover; }
+  .server-name { font-weight: 700; font-size: 14px; }
+  .server-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── Event list ── */
+  .event-item {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .event-title { font-weight: 700; font-size: 14px; }
+  .event-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 3px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px; font-size: 13px;
+    display: none; align-items: center; gap: 10px; max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .toast.show { display: flex; animation: slideIn 0.2s ease; }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  @keyframes slideIn { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* ── Channel checkboxes ── */
+  .channel-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .channel-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .channel-item:last-child { border-bottom: none; }
+  .channel-item input[type=checkbox] { width: auto; cursor: pointer; accent-color: var(--accent); }
+  .channel-item label { margin: 0; cursor: pointer; font-size: 13px; color: var(--text); font-weight: 400; }
+
+  /* ── Members select ── */
+  .member-search { margin-bottom: 8px; }
+  .members-list { max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .member-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .member-item:last-child { border-bottom: none; }
+  .member-item:hover { background: var(--surface2); }
+  .member-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+
+  /* scrollbar global */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .sep { height: 1px; background: var(--border); margin: 20px 0; }
+  .text-muted { color: var(--muted); font-size: 12px; }
+  .flex { display: flex; gap: 10px; align-items: center; }
+  .flex-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 14px; }
+  .w-full { width: 100%; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">RTB</div>
+      <div>
+        <div class="logo-text">BotPanel</div>
+        <div class="logo-sub">Control Center</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" onclick="showPage('dashboard')"><span class="icon"></span> Dashboard</button>
+      <button class="nav-item" onclick="showPage('messages')"><span class="icon"></span> Messages</button>
+      <button class="nav-item" onclick="showPage('moderation')"><span class="icon"></span> Moderation</button>
+      <button class="nav-item" onclick="showPage('ai')"><span class="icon"></span> AI Settings</button>
+      <button class="nav-item" onclick="showPage('events')"><span class="icon"></span> Events</button>
+      <button class="nav-item" onclick="showPage('settings')"><span class="icon"></span> Settings</button>
+    </nav>
+    <div class="status-bar">
+      <div><span class="status-dot" id="status-dot"></span><span id="status-tag">Connecting...</span></div>
+      <div style="margin-top:4px;color:var(--muted)" id="status-guilds"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">bot overview & live logs</div>
+
+      <div class="grid3" style="margin-bottom:20px">
+        <div class="stat"><div class="stat-val" id="stat-servers">—</div><div class="stat-label">Servers</div></div>
+        <div class="stat"><div class="stat-val" id="stat-uptime">—</div><div class="stat-label">Uptime</div></div>
+        <div class="stat"><div class="stat-val" id="stat-status">—</div><div class="stat-label">Status</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Live Logs
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="downloadLogs()">⬇ Download</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearLogView()"> Clear View</button>
+        </div>
+        <div class="log-box" id="log-box"></div>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="page" id="page-messages">
+      <div class="page-title">Messages</div>
+      <div class="page-sub">send channel messages & direct messages</div>
+
+      <div class="grid2">
+        <!-- Channel Message -->
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--green)"></span> Channel Message</div>
+          <div class="form-group">
+            <label>Select Server(s)</label>
+            <div id="msg-servers-list" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto"></div>
+          </div>
+          <div class="form-group" id="channels-wrapper" style="display:none">
+            <label>Select Channel(s)</label>
+            <div class="channel-list" id="msg-channels-list"></div>
+          </div>
+          <div class="form-group">
+            <label>Message</label>
+            <textarea id="channel-msg" placeholder="Type your message..."></textarea>
+          </div>
+          <button class="btn btn-primary w-full" onclick="sendChannelMessage()"> Send to Selected</button>
+        </div>
+
+        <!-- DM -->
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> Direct Message</div>
+          <div class="form-group">
+            <label>Pick Server to Browse Members</label>
+            <select id="dm-guild-select" onchange="loadDmMembers()">
+              <option value="">— Select server —</option>
+            </select>
+          </div>
+          <div class="form-group" id="dm-members-wrapper" style="display:none">
+            <label>Search & Select Member</label>
+            <input class="member-search" id="member-search" placeholder="Search username..." oninput="filterMembers()">
+            <div class="members-list" id="dm-members-list"></div>
+          </div>
+          <div class="form-group" id="dm-userid-wrapper">
+            <label>Or Enter User ID directly</label>
+            <input id="dm-user-id" placeholder="User ID (e.g. 123456789)">
+          </div>
+          <div class="form-group">
+            <label>Message</label>
+            <textarea id="dm-msg" placeholder="Type your DM..."></textarea>
+          </div>
+          <button class="btn btn-primary w-full" onclick="sendDM()"> Send DM</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODERATION -->
+    <div class="page" id="page-moderation">
+      <div class="page-title">Moderation</div>
+      <div class="page-sub">automod & banned words</div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--red)"></span> Banned Words</div>
+        <p class="text-muted" style="margin-bottom:14px">Add words below. If a server member sends a message containing any of these words, the message will be deleted and they will receive a warning.</p>
+        <div class="row">
+          <div class="form-group">
+            <input id="new-word" placeholder="Add a word or phrase..." onkeydown="if(event.key==='Enter')addBadWord()">
+          </div>
+          <button class="btn btn-danger" onclick="addBadWord()">➕ Add</button>
+        </div>
+        <div class="tags-list" id="bad-words-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--yellow)"></span> Warnings Overview</div>
+        <p class="text-muted" style="margin-bottom:12px">All warnings given across all servers.</p>
+        <div id="warnings-table">Loading...</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Moderation Commands Reference</div>
+        <div style="font-family:var(--mono);font-size:12px;line-height:2;color:var(--muted)">
+          <div><span style="color:var(--accent)">!ban @user [reason]</span> — Permanently ban a user</div>
+          <div><span style="color:var(--accent)">!kick @user [reason]</span> — Kick a user from the server</div>
+          <div><span style="color:var(--accent)">!mute @user [minutes]</span> — Timeout/mute a user</div>
+          <div><span style="color:var(--accent)">!unmute @user</span> — Remove timeout from a user</div>
+          <div><span style="color:var(--accent)">!timeout @user [minutes] [reason]</span> — Timeout a user</div>
+          <div><span style="color:var(--accent)">!warn @user [reason]</span> — Give a warning</div>
+          <div><span style="color:var(--accent)">!warnings @user</span> — Check a user's warnings</div>
+          <div><span style="color:var(--accent)">!clearwarnings @user</span> — Clear all warnings</div>
+          <div><span style="color:var(--accent)">!purge [1-100]</span> — Delete messages</div>
+          <div><span style="color:var(--accent)">!slowmode [seconds]</span> — Set channel slowmode</div>
+          <div><span style="color:var(--accent)">!lock / !unlock</span> — Lock or unlock a channel</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div class="page" id="page-ai">
+      <div class="page-title">AI Settings</div>
+      <div class="page-sub">configure the AI assistant</div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> AI Toggle</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name">Enable AI Responses</div>
+            <div class="toggle-desc">When enabled, pinging the bot (@bot your question) will trigger a human-like AI response.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="ai-toggle" onchange="saveAiSettings()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> How AI Works</div>
+        <div style="font-size:13px;line-height:1.8;color:var(--muted)">
+          <p>1. Make sure your <strong style="color:var(--text)">Anthropic API key</strong> is set in ⚙️ Settings.</p>
+          <p>2. Enable AI above.</p>
+          <p>3. In any server, a member (or you) can ping the bot like:<br>
+            <span style="font-family:var(--mono);color:var(--accent);font-size:12px">@YourBot what is the weather today?</span><br>
+            <span style="font-family:var(--mono);color:var(--accent);font-size:12px">@YourBot write me a Python hello world script</span>
+          </p>
+          <p>4. The bot will respond naturally like a human.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="page" id="page-events">
+      <div class="page-title">Scheduled Events</div>
+      <div class="page-sub">schedule announcements & embeds</div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--yellow)"></span> Create Event</div>
+          <div class="form-group">
+            <label>Event Title</label>
+            <input id="evt-title" placeholder="e.g. Server Giveaway!">
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="evt-desc" placeholder="Event details..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Server</label>
+            <select id="evt-guild" onchange="loadEvtChannels()">
+              <option value="">— Select server —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Channel</label>
+            <select id="evt-channel">
+              <option value="">— Select channel —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date & Time</label>
+            <input type="datetime-local" id="evt-time">
+          </div>
+          <button class="btn btn-primary w-full" onclick="scheduleEvent()"> Schedule Event</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="dot"></span> Upcoming Events</div>
+          <div id="events-list">No events scheduled.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-title">Settings</div>
+      <div class="page-sub">bot token & api keys</div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Bot Configuration</div>
+        <div class="form-group">
+          <label>Discord Bot Token</label>
+          <input id="cfg-token" type="password" placeholder="paste your bot token here">
+        </div>
+        <div class="form-group">
+          <label>Anthropic API Key (for AI feature)</label>
+          <input id="cfg-anthro" type="password" placeholder="sk-ant-...">
+        </div>
+        <button class="btn btn-success" onclick="saveConfig()"> Save Configuration</button>
+        <p class="text-muted mt-2"> After saving token changes, restart the bot with <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">node start.js</code></p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'messages') initMessages();
+  if (id === 'moderation') initModeration();
+  if (id === 'ai') initAI();
+  if (id === 'events') initEvents();
+  if (id === 'settings') initSettings();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? 'YES ' : 'NO ') + msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+async function refreshStatus() {
+  try {
+    const r = await fetch(API + '/status');
+    const d = await r.json();
+    const dot = document.getElementById('status-dot');
+    const tag = document.getElementById('status-tag');
+    const guilds = document.getElementById('status-guilds');
+    dot.className = 'status-dot ' + (d.online ? 'online' : '');
+    tag.textContent = d.online ? d.tag : 'Offline';
+    guilds.textContent = d.online ? `${d.guildCount} server(s)` : '';
+    document.getElementById('stat-servers').textContent = d.guildCount || '—';
+    document.getElementById('stat-status').textContent = d.online ? 'Online' : 'Offline';
+    document.getElementById('stat-status').style.color = d.online ? 'var(--green)' : 'var(--red)';
+    if (d.uptime) {
+      const s = Math.floor(d.uptime / 1000);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      document.getElementById('stat-uptime').textContent = h + 'h ' + m + 'm';
+    }
+  } catch {}
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+let lastLogCount = 0;
+async function refreshLogs() {
+  try {
+    const r = await fetch(API + '/logs');
+    const d = await r.json();
+    if (d.logs.length !== lastLogCount) {
+      lastLogCount = d.logs.length;
+      const box = document.getElementById('log-box');
+      box.innerHTML = d.logs.map(l => {
+        const m = l.match(/^\[(.+?)\] (.+)$/);
+        if (m) return `<div class="log-line"><span class="ts">[${m[1]}]</span> <span class="msg">${escHtml(m[2])}</span></div>`;
+        return `<div class="log-line">${escHtml(l)}</div>`;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+  } catch {}
+}
+
+function clearLogView() { document.getElementById('log-box').innerHTML = ''; lastLogCount = -1; }
+function downloadLogs() { window.open(API + '/logs/download'); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Messages page ─────────────────────────────────────────────────────────────
+let allServers = [];
+let selectedMsgServers = new Set();
+let selectedMsgChannels = new Set();
+let allMembers = [];
+
+async function initMessages() {
+  const r = await fetch(API + '/servers');
+  const d = await r.json();
+  allServers = d.servers || [];
+
+  // Populate server list for channel messages
+  const list = document.getElementById('msg-servers-list');
+  list.innerHTML = '';
+  allServers.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'server-card';
+    card.dataset.id = s.id;
+    card.innerHTML = `
+      <div class="server-icon">${s.icon ? `<img src="${s.icon}">` : s.name[0]}</div>
+      <div><div class="server-name">${escHtml(s.name)}</div><div class="server-meta">${s.memberCount} members</div></div>
+    `;
+    card.onclick = () => toggleMsgServer(s.id, card);
+    list.appendChild(card);
+  });
+
+  // Populate DM guild select
+  const dmSel = document.getElementById('dm-guild-select');
+  dmSel.innerHTML = '<option value="">— Select server —</option>';
+  allServers.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    dmSel.appendChild(o);
+  });
+
+  // Populate event guild select
+  const evtSel = document.getElementById('evt-guild');
+  evtSel.innerHTML = '<option value="">— Select server —</option>';
+  allServers.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    evtSel.appendChild(o);
+  });
+}
+
+async function toggleMsgServer(guildId, card) {
+  if (selectedMsgServers.has(guildId)) {
+    selectedMsgServers.delete(guildId);
+    card.classList.remove('selected');
+  } else {
+    selectedMsgServers.add(guildId);
+    card.classList.add('selected');
+  }
+  // Load channels for first selected server
+  if (selectedMsgServers.size > 0) {
+    const firstId = [...selectedMsgServers][0];
+    await loadChannelsForMsg(firstId);
+    document.getElementById('channels-wrapper').style.display = 'block';
+  } else {
+    document.getElementById('channels-wrapper').style.display = 'none';
+  }
+}
+
+async function loadChannelsForMsg(guildId) {
+  const r = await fetch(`${API}/servers/${guildId}/channels`);
+  const d = await r.json();
+  const list = document.getElementById('msg-channels-list');
+  list.innerHTML = '';
+  (d.channels || []).forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'channel-item';
+    item.innerHTML = `
+      <input type="checkbox" id="ch-${c.id}" value="${c.id}" onchange="toggleChannel('${c.id}')">
+      <label for="ch-${c.id}"># ${escHtml(c.name)}</label>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function toggleChannel(id) {
+  if (selectedMsgChannels.has(id)) selectedMsgChannels.delete(id);
+  else selectedMsgChannels.add(id);
+}
+
+async function sendChannelMessage() {
+  if (selectedMsgServers.size === 0) return toast('Select at least one server', 'error');
+  if (selectedMsgChannels.size === 0) return toast('Select at least one channel', 'error');
+  const msg = document.getElementById('channel-msg').value.trim();
+  if (!msg) return toast('Type a message first', 'error');
+  for (const channelId of selectedMsgChannels) {
+    const r = await fetch(API + '/send/channel', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ guildIds: [...selectedMsgServers], channelId, message: msg })
+    });
+    const d = await r.json();
+    if (d.results) toast(`Sent to ${d.results.filter(x=>x.success).length} server(s)!`);
+    else toast(d.error || 'Error', 'error');
+  }
+}
+
+async function loadDmMembers() {
+  const guildId = document.getElementById('dm-guild-select').value;
+  if (!guildId) return;
+  document.getElementById('dm-members-wrapper').style.display = 'block';
+  const r = await fetch(`${API}/servers/${guildId}/members`);
+  const d = await r.json();
+  allMembers = d.members || [];
+  renderMembers(allMembers);
+}
+
+function renderMembers(members) {
+  const list = document.getElementById('dm-members-list');
+  list.innerHTML = '';
+  members.slice(0, 50).forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'member-item';
+    item.innerHTML = `
+      <div class="member-avatar">${m.username[0].toUpperCase()}</div>
+      <div><div style="font-size:13px;font-weight:600">${escHtml(m.username)}</div><div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${m.id}</div></div>
+    `;
+    item.onclick = () => {
+      document.getElementById('dm-user-id').value = m.id;
+      document.querySelectorAll('.member-item').forEach(el => el.style.background = '');
+      item.style.background = 'var(--surface2)';
+    };
+    list.appendChild(item);
+  });
+}
+
+function filterMembers() {
+  const q = document.getElementById('member-search').value.toLowerCase();
+  renderMembers(allMembers.filter(m => m.username.toLowerCase().includes(q) || m.id.includes(q)));
+}
+
+async function sendDM() {
+  const userId = document.getElementById('dm-user-id').value.trim();
+  const msg = document.getElementById('dm-msg').value.trim();
+  if (!userId || !msg) return toast('User ID and message required', 'error');
+  const r = await fetch(API + '/send/dm', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ userId, message: msg })
+  });
+  const d = await r.json();
+  if (d.success) toast(`DM sent to ${d.user}!`);
+  else toast(d.error || 'Error', 'error');
+}
+
+// ── Moderation ────────────────────────────────────────────────────────────────
+async function initModeration() {
+  await refreshBadWords();
+  await refreshWarnings();
+}
+
+async function refreshBadWords() {
+  const r = await fetch(API + '/badwords');
+  const d = await r.json();
+  const list = document.getElementById('bad-words-list');
+  list.innerHTML = '';
+  (d.words || []).forEach(w => {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.innerHTML = `${escHtml(w)} <span class="remove" onclick="removeBadWord('${escHtml(w)}')">×</span>`;
+    list.appendChild(tag);
+  });
+  if (!d.words || d.words.length === 0) list.innerHTML = '<span class="text-muted">No banned words yet.</span>';
+}
+
+async function addBadWord() {
+  const input = document.getElementById('new-word');
+  const word = input.value.trim();
+  if (!word) return;
+  const r = await fetch(API + '/badwords', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ word })
+  });
+  const d = await r.json();
+  if (d.success) { input.value = ''; await refreshBadWords(); toast(`"${word}" added to banned list`); }
+  else toast(d.error, 'error');
+}
+
+async function removeBadWord(word) {
+  await fetch(`${API}/badwords/${encodeURIComponent(word)}`, { method: 'DELETE' });
+  await refreshBadWords();
+  toast(`"${word}" removed`);
+}
+
+async function refreshWarnings() {
+  const r = await fetch(API + '/warnings');
+  const d = await r.json();
+  const container = document.getElementById('warnings-table');
+  const entries = [];
+  for (const guildId of Object.keys(d)) {
+    for (const userId of Object.keys(d[guildId])) {
+      entries.push({ guildId, userId, warnings: d[guildId][userId] });
+    }
+  }
+  if (entries.length === 0) { container.innerHTML = '<span class="text-muted">No warnings recorded.</span>'; return; }
+  container.innerHTML = entries.map(e => `
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--accent)">User: ${e.userId}</div>
+        <div style="font-size:12px;color:var(--muted)">Guild: ${e.guildId} &nbsp;|&nbsp; ${e.warnings.length} warning(s)</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${e.warnings.map(w=>w.reason).join(', ')}</div>
+      </div>
+      <span style="background:var(--red);color:#fff;padding:3px 10px;border-radius:6px;font-size:13px;font-weight:700">${e.warnings.length}</span>
+    </div>
+  `).join('');
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+async function initAI() {
+  const r = await fetch(API + '/settings');
+  const d = await r.json();
+  document.getElementById('ai-toggle').checked = !!d.aiEnabled;
+}
+
+async function saveAiSettings() {
+  const enabled = document.getElementById('ai-toggle').checked;
+  await fetch(API + '/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ aiEnabled: enabled })
+  });
+  toast('AI ' + (enabled ? 'enabled' : 'disabled'));
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+async function initEvents() {
+  // Populate guild selects if not already populated
+  if (!allServers.length) {
+    const r = await fetch(API + '/servers');
+    const d = await r.json();
+    allServers = d.servers || [];
+    const sel = document.getElementById('evt-guild');
+    sel.innerHTML = '<option value="">— Select server —</option>';
+    allServers.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name;
+      sel.appendChild(o);
+    });
+  }
+  await refreshEvents();
+}
+
+async function loadEvtChannels() {
+  const guildId = document.getElementById('evt-guild').value;
+  if (!guildId) return;
+  const r = await fetch(`${API}/servers/${guildId}/channels`);
+  const d = await r.json();
+  const sel = document.getElementById('evt-channel');
+  sel.innerHTML = '<option value="">— Select channel —</option>';
+  (d.channels || []).forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = '# ' + c.name;
+    sel.appendChild(o);
+  });
+}
+
+async function scheduleEvent() {
+  const title = document.getElementById('evt-title').value.trim();
+  const desc = document.getElementById('evt-desc').value.trim();
+  const guildId = document.getElementById('evt-guild').value;
+  const channelId = document.getElementById('evt-channel').value;
+  const time = document.getElementById('evt-time').value;
+  if (!title || !guildId || !channelId || !time) return toast('Fill all required fields', 'error');
+  const r = await fetch(API + '/events', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ title, description: desc, guildId, channelId, time: new Date(time).toISOString() })
+  });
+  const d = await r.json();
+  if (d.success) { toast('Event scheduled!'); await refreshEvents(); document.getElementById('evt-title').value = ''; document.getElementById('evt-desc').value = ''; }
+  else toast(d.error || 'Error', 'error');
+}
+
+async function refreshEvents() {
+  const r = await fetch(API + '/events');
+  const d = await r.json();
+  const list = document.getElementById('events-list');
+  if (!d.events || d.events.length === 0) { list.innerHTML = '<span class="text-muted">No events scheduled.</span>'; return; }
+  list.innerHTML = d.events.map(e => `
+    <div class="event-item">
+      <div>
+        <div class="event-title"> ${escHtml(e.title)}</div>
+        <div class="event-meta">${new Date(e.time).toLocaleString()} &nbsp;|&nbsp; Guild: ${e.guildId}</div>
+        ${e.description ? `<div class="text-muted" style="margin-top:4px;font-size:12px">${escHtml(e.description)}</div>` : ''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function deleteEvent(id) {
+  await fetch(`${API}/events/${id}`, { method: 'DELETE' });
+  toast('Event removed');
+  await refreshEvents();
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function initSettings() {
+  const r = await fetch(API + '/config');
+  const d = await r.json();
+  if (d.tokenSet) document.getElementById('cfg-token').placeholder = '••••••••  (already set)';
+  if (d.anthropicKey) document.getElementById('cfg-anthro').placeholder = '••••••••  (already set)';
+}
+
+async function saveConfig() {
+  const token = document.getElementById('cfg-token').value.trim();
+  const key = document.getElementById('cfg-anthro').value.trim();
+  const body = {};
+  if (token) body.token = token;
+  if (key) body.anthropicKey = key;
+  const r = await fetch(API + '/config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.success) toast('Config saved! Restart bot to apply token changes.');
+  else toast('Error saving', 'error');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+refreshStatus();
+refreshLogs();
+setInterval(refreshStatus, 5000);
+setInterval(refreshLogs, 2000);
+</script>
+</body>
+</html>
