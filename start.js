@@ -10,7 +10,7 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
 // Create default config if it doesn't exist
 const configPath = path.join(dataDir, 'config.json');
 if (!fs.existsSync(configPath)) {
-  fs.writeFileSync(configPath, JSON.stringify({ token: 'MTQ1MTYwNjEyMzM4MjgzNzM4MA.GeGXbN.BbMzU6E0ZjreD5qvwl3aPfiPkKCtZuOciDbovA', anthropicKey: '' }, null, 2));
+  fs.writeFileSync(configPath, JSON.stringify({ token: 'MTQ1MTYwNjEyMzM4MjgzNzM4MA.GU80Mz.bMqQg5oNWWF1zqPWkwlAeSSUpWLjE41fgVofkY', anthropicKey: '' }, null, 2));
   console.log('\n  Created data/config.json — please add your bot token before running again!\n');
 }
 
